@@ -316,6 +316,7 @@
     NSString* periodNumberIOS = @"0";
     NSString* periodUnitIOS = @"";
 
+    NSString* subscriptionGroupIdentifier = product.subscriptionGroupIdentifier;
 
     if (@available(iOS 11.2, *)) {
         formatter.locale = product.introductoryPrice.priceLocale;
@@ -405,6 +406,7 @@
         product.localizedDescription ? product.localizedDescription : @"", @"description",
         localizedPrice, @"localizedPrice",
         periodNumberIOS, @"subscriptionPeriodNumberIOS",
+        subscriptionGroupIdentifier, @"subscriptionGroupIdentifier",
         periodUnitIOS, @"subscriptionPeriodUnitIOS",
         introductoryPrice, @"introductoryPrice",
         introductoryPricePaymentMode, @"introductoryPricePaymentModeIOS",

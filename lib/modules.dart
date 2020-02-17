@@ -1,3 +1,5 @@
+import 'dart:io';
+
 enum ResponseCodeAndroid {
   BILLING_RESPONSE_RESULT_OK,
   BILLING_RESPONSE_RESULT_USER_CANCELED,
@@ -20,6 +22,8 @@ class IAPItem {
   final String title;
   final String description;
   final String introductoryPrice;
+
+  final SubscriptionInfo subscriptionInfo;
 
   /// ios only
   final String subscriptionPeriodNumberIOS;
@@ -48,25 +52,20 @@ class IAPItem {
         title = json['title'] as String,
         description = json['description'] as String,
         introductoryPrice = json['introductoryPrice'] as String,
-        introductoryPricePaymentModeIOS =
-            json['introductoryPricePaymentModeIOS'] as String,
-        introductoryPriceNumberOfPeriodsIOS =
-            json['introductoryPriceNumberOfPeriodsIOS'] as String,
-        introductoryPriceSubscriptionPeriodIOS =
-            json['introductoryPriceSubscriptionPeriodIOS'] as String,
-        subscriptionPeriodNumberIOS =
-            json['subscriptionPeriodNumberIOS'] as String,
+        introductoryPricePaymentModeIOS = json['introductoryPricePaymentModeIOS'] as String,
+        introductoryPriceNumberOfPeriodsIOS = json['introductoryPriceNumberOfPeriodsIOS'] as String,
+        introductoryPriceSubscriptionPeriodIOS = json['introductoryPriceSubscriptionPeriodIOS'] as String,
+        subscriptionPeriodNumberIOS = json['subscriptionPeriodNumberIOS'] as String,
         subscriptionPeriodUnitIOS = json['subscriptionPeriodUnitIOS'] as String,
         subscriptionPeriodAndroid = json['subscriptionPeriodAndroid'] as String,
-        introductoryPriceCyclesAndroid =
-            json['introductoryPriceCyclesAndroid'] as String,
-        introductoryPricePeriodAndroid =
-            json['introductoryPricePeriodAndroid'] as String,
+        introductoryPriceCyclesAndroid = json['introductoryPriceCyclesAndroid'] as String,
+        introductoryPricePeriodAndroid = json['introductoryPricePeriodAndroid'] as String,
         freeTrialPeriodAndroid = json['freeTrialPeriodAndroid'] as String,
         signatureAndroid = json['signatureAndroid'] as String,
         iconUrl = json['iconUrl'] as String,
         originalJson = json['originalJson'] as String,
-        originalPrice = json['originalJson'] as String;
+        originalPrice = json['originalJson'] as String,
+        subscriptionInfo = SubscriptionInfo.fromJSON(json);
 
   /// Return the contents of this class as a string
   @override
@@ -90,8 +89,7 @@ class IAPItem {
         'freeTrialPeriodAndroid: $freeTrialPeriodAndroid, '
         'iconUrl: $iconUrl, '
         'originalJson: $originalJson, '
-        'originalPrice: $originalPrice, '
-    ;
+        'originalPrice: $originalPrice, ';
   }
 }
 
@@ -125,7 +123,6 @@ class PurchasedItem {
         transactionReceipt = json['transactionReceipt'] as String,
         purchaseToken = json['purchaseToken'] as String,
         orderId = json['orderId'] as String,
-
         dataAndroid = json['dataAndroid'] as String,
         signatureAndroid = json['signatureAndroid'] as String,
         isAcknowledgedAndroid = json['isAcknowledgedAndroid'] as bool,
@@ -133,11 +130,8 @@ class PurchasedItem {
         purchaseStateAndroid = json['purchaseStateAndroid'] as int,
         developerPayloadAndroid = json['developerPayloadAndroid'] as String,
         originalJsonAndroid = json['originalJsonAndroid'] as String,
-
-        originalTransactionDateIOS =
-            _extractDate(json['originalTransactionDateIOS']),
-        originalTransactionIdentifierIOS =
-            json['originalTransactionIdentifierIOS'] as String;
+        originalTransactionDateIOS = _extractDate(json['originalTransactionDateIOS']),
+        originalTransactionIdentifierIOS = json['originalTransactionIdentifierIOS'] as String;
 
   /// This returns transaction dates in ISO 8601 format.
   @override
@@ -148,6 +142,7 @@ class PurchasedItem {
         'transactionReceipt: $transactionReceipt, '
         'purchaseToken: $purchaseToken, '
         'orderId: $orderId, '
+
         /// android specific
         'dataAndroid: $dataAndroid, '
         'signatureAndroid: $signatureAndroid, '
@@ -156,6 +151,7 @@ class PurchasedItem {
         'purchaseStateAndroid: $purchaseStateAndroid, '
         'developerPayloadAndroid: $developerPayloadAndroid, '
         'originalJsonAndroid: $originalJsonAndroid, '
+
         /// ios specific
         'originalTransactionDateIOS: ${originalTransactionDateIOS?.toIso8601String()}, '
         'originalTransactionIdentifierIOS: $originalTransactionIdentifierIOS';
@@ -176,12 +172,7 @@ class PurchaseResult {
   final String code;
   final String message;
 
-  PurchaseResult({
-    this.responseCode,
-    this.debugMessage,
-    this.code,
-    this.message
-  });
+  PurchaseResult({this.responseCode, this.debugMessage, this.code, this.message});
 
   PurchaseResult.fromJSON(Map<String, dynamic> json)
       : responseCode = json['responseCode'] as int,
@@ -190,22 +181,20 @@ class PurchaseResult {
         message = json['message'] as String;
 
   Map<String, dynamic> toJson() => {
-    "responseCode": responseCode ?? 0,
-    "debugMessage": debugMessage ?? '',
-    "code": code ?? '',
-    "message": message ?? '',
-  };
+        "responseCode": responseCode ?? 0,
+        "debugMessage": debugMessage ?? '',
+        "code": code ?? '',
+        "message": message ?? '',
+      };
 
   @override
   String toString() {
     return 'responseCode: $responseCode, '
         'debugMessage: $debugMessage, '
         'code: $code, '
-        'message: $message'
-    ;
+        'message: $message';
   }
 }
-
 
 class ConnectionResult {
   final bool connected;
@@ -214,16 +203,98 @@ class ConnectionResult {
     this.connected,
   });
 
-  ConnectionResult.fromJSON(Map<String, dynamic> json)
-      : connected = json['connected'] as bool;
+  ConnectionResult.fromJSON(Map<String, dynamic> json) : connected = json['connected'] as bool;
 
   Map<String, dynamic> toJson() => {
-    "connected": connected ?? false,
-  };
+        "connected": connected ?? false,
+      };
 
   @override
   String toString() {
-    return 'connected: $connected'
-    ;
+    return 'connected: $connected';
+  }
+}
+
+enum BillingPeriodType { DAILY, WEEKLY, MONTHLY, YEARLY }
+enum BillingPaymentMode { FREE_TRIAL, PAY_AS_YOU_GO, PAY_UP_FRONT }
+
+class BillingPeriod {
+  final BillingPeriodType type;
+  final int amount;
+
+  const BillingPeriod(this.type, this.amount);
+
+  const BillingPeriod.yearly(this.amount) : type = BillingPeriodType.YEARLY;
+
+  const BillingPeriod.monthly(this.amount) : type = BillingPeriodType.MONTHLY;
+
+  const BillingPeriod.daily(this.amount) : type = BillingPeriodType.DAILY;
+
+  const BillingPeriod.weekly(this.amount) : type = BillingPeriodType.WEEKLY;
+}
+
+class SubscriptionInfo {
+  final String subscriptionGroupIdentifier;
+  final BillingPaymentMode paymentMode;
+  final BillingPeriod billingPeriod;
+  final BillingPeriod introPeriod;
+
+  SubscriptionInfo(this.subscriptionGroupIdentifier, this.billingPeriod, {this.paymentMode, this.introPeriod});
+
+  factory SubscriptionInfo.fromJSON(Map<String, dynamic> json) {
+    if (Platform.isIOS) {
+      final introductoryPriceNumberOfPeriodsIOS = json['introductoryPriceNumberOfPeriodsIOS'] as String,
+          introductoryPriceSubscriptionPeriodIOS = json['introductoryPriceSubscriptionPeriodIOS'] as String,
+          subscriptionPeriodNumberIOS = json['subscriptionPeriodNumberIOS'] as String,
+          subscriptionGroupIdentifier = json["subscriptionGroupIdentifier"] as String,
+          subscriptionPeriodUnitIOS = json['subscriptionPeriodUnitIOS'] as String,
+          introductoryPricePaymentModeIOS = json['introductoryPricePaymentModeIOS'] as String;
+
+      if (subscriptionPeriodUnitIOS != null) {
+        final period = convertIosPeriod(subscriptionPeriodUnitIOS);
+        BillingPeriod intro;
+        final introPeriod = convertIosPeriod(introductoryPriceSubscriptionPeriodIOS);
+        final introPeriodAmount = int.tryParse(introductoryPriceNumberOfPeriodsIOS) ?? 1;
+        if (introPeriod != null) {
+          intro = BillingPeriod(introPeriod, introPeriodAmount);
+        }
+        final periodAmount = int.tryParse(subscriptionPeriodNumberIOS) ?? 1;
+        return SubscriptionInfo(
+          subscriptionGroupIdentifier,
+          BillingPeriod(period, periodAmount),
+          paymentMode: convertPaymentMode(introductoryPricePaymentModeIOS),
+          introPeriod: intro,
+        );
+      }
+    }
+    return null;
+  }
+}
+
+BillingPeriodType convertIosPeriod(String iosPeriod) {
+  switch (iosPeriod?.toLowerCase()) {
+    case 'day':
+      return BillingPeriodType.DAILY;
+    case 'month':
+      return BillingPeriodType.MONTHLY;
+    case 'week':
+      return BillingPeriodType.WEEKLY;
+    case 'year':
+      return BillingPeriodType.YEARLY;
+    default:
+      return null;
+  }
+}
+
+BillingPaymentMode convertPaymentMode(String mode) {
+  switch (mode?.toLowerCase()) {
+    case 'FREETRIAL':
+      return BillingPaymentMode.FREE_TRIAL;
+    case 'PAYASYOUGO':
+      return BillingPaymentMode.PAY_AS_YOU_GO;
+    case 'PAYUPFRONT':
+      return BillingPaymentMode.PAY_UP_FRONT;
+    default:
+      return null;
   }
 }
